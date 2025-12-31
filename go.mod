@@ -1,3 +1,3 @@
-module github.com/w6xian/go-tlv
+module github.com/w6xian/tlv
 
 go 1.25.3
