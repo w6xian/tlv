@@ -19,23 +19,6 @@ type Option struct {
 	encoder    *encodeState
 }
 
-func convert_tlv_header(v []byte, opt *Option) (uint, TLVFrame, *Option) {
-	level := opt.Level()
-	if level == 0 {
-		if v[0] == 0x00 {
-			x := v[1] >> 4 & 0x0F
-			n := v[1] & 0x0F
-			opt.MaxLength = byte(x)
-			opt.MinLength = byte(n)
-			// 保留1位
-			// v[2]
-			opt.Level(level + 1)
-			v = v[3+x:]
-		}
-	}
-	return level, v, opt
-}
-
 func newOption(opts ...FrameOption) *Option {
 	tlv_option_option.Do(func() {
 		default_option = &Option{

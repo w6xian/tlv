@@ -16,7 +16,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(b))
+	fmt.Println(b)
 	// 转成 struct
 	jb, err := tlv.JsonUnpack(b)
 	if err != nil {

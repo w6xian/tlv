@@ -1,6 +1,7 @@
 package tlv
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -11,7 +12,7 @@ import (
 )
 
 func read_tlv_struct_string(v []byte, opt *Option) (string, error) {
-	_, v, opt = convert_tlv_header(v, opt)
+
 	t, l, v, err := Next(v, opt)
 	if err != nil {
 		return "", err
@@ -69,7 +70,6 @@ func read_tlv_struct_string(v []byte, opt *Option) (string, error) {
 }
 
 func read_tlv_struct(v []byte, t any, opt *Option) error {
-	_, v, opt = convert_tlv_header(v, opt)
 	kind, ty, sv := get_any_info(t)
 	if kind != reflect.Struct {
 		// json 类型 单独处理
@@ -265,24 +265,54 @@ func get_any_info(v any) (reflect.Kind, reflect.Type, reflect.Value) {
 	return ty.Kind(), ty, sv
 }
 
-func create_tlv_struct(t any, opt *Option) (int, error) {
-	structLen := get_tlv_max_len_bytes(0, opt)
-	level := opt.Level()
-	if level <= 0 {
-		// protocol
-		opt.WriteByte(TLV_TYPE_PROTOCOL)
-		// 高低位 0x00,前四位为高位，低四位为低位
-		x := opt.MaxLength & 0x0F
-		n := opt.MinLength & 0x0F
-		opt.WriteByte(x<<4 | n) // 0x41  表示max=4，min=1
-		opt.WriteByte(0x01)     // 0x01  表示后四位表示版本，高四位保留
-		opt.encoder.Write(structLen)
+func protocol_pack(data []byte, opt *Option) []byte {
+	// protocol
+	plen := get_tlv_len(len(data), opt)
+	var buf bytes.Buffer
+	buf.WriteByte(TLV_TYPE_PROTOCOL)
+	// 高低位 0x00,前四位为高位，低四位为低位
+	x := opt.MaxLength & 0x0F
+	n := opt.MinLength & 0x0F
+	buf.WriteByte(x<<4 | n) // 0x41  表示max=4，min=1
+	b := byte(1)
+	// 最高位
+	if len(plen) == int(opt.MaxLength) {
+		b |= 0x80
 	}
-	opt.Level(opt.Level() + 1)
-	stat := opt.Encoder().Len()
+	buf.WriteByte(b)
+	buf.Write(plen)
+	buf.Write(data)
+	return buf.Bytes()
+}
+func protocol_unpack(v []byte, opts ...FrameOption) ([]byte, *Option, error) {
+	opt := newOption(opts...)
+	if v[0] == 0x00 {
+		x := v[1] >> 4 & 0x0F
+		n := v[1] & 0x0F
+		opt.MaxLength = byte(x)
+		opt.MinLength = byte(n)
+		// 保留1位
+		// 0000 0000
+		// 1000   表使用最大长度
+		m := v[1]&0x80 == 0x80
+		l := opt.MinLength
+		if m {
+			l = opt.MaxLength
+		}
+		length := v[3 : 3+l]
+		length_int := bytes_to_int(length)
+		if length_int != len(v)-int(l+3) {
+			return nil, nil, fmt.Errorf("tlv length not match: %d", length_int)
+		}
+		v = v[3+l:]
+	}
+	return v, opt, nil
+}
 
+func create_tlv_struct(t any, opt *Option) (int, error) {
+	stat := opt.Encoder().Len()
 	kind, ty, sv := get_any_info(t)
-	fmt.Println(kind, ty, sv)
+	structLen := get_tlv_max_len_bytes(0, opt)
 	obj_size := 0
 	if kind != reflect.Struct {
 		r := tlv_serialize_value(sv, opt)
@@ -305,11 +335,7 @@ func create_tlv_struct(t any, opt *Option) (int, error) {
 		ls := get_tlv_max_len_bytes(obj_size, opt)
 		copy(opt.Bytes()[stat+1:stat+1+len(structLen)], ls)
 	}
-	// 第一次写
-	if level <= 0 {
-		pl := get_tlv_max_len_bytes(obj_size+stat, opt)
-		copy(opt.Bytes()[3:3+len(structLen)], pl)
-	}
+
 	return obj_size + 1 + int(opt.MaxLength), nil
 }
 
