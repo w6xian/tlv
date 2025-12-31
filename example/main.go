@@ -30,6 +30,14 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(strs2)
+	fmt.Println("-------")
+	frame := tlv.Serialize(strs)
+	fmt.Println(frame)
+	data, err := tlv.NewFromFrame(frame)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data.Value())
 }
 
 type A struct {

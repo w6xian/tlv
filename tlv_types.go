@@ -421,9 +421,12 @@ func tlv_deserialize(v []byte, opts *Option) (*TlV, error) {
 }
 
 func tlv_serialize_value(f reflect.Value, opt *Option) int {
+	if f.IsValid() == false {
+		return tlv_frame_from_nil(opt)
+	}
 	v := f.Interface()
 	if v == nil {
-		return 0
+		return tlv_frame_from_nil(opt)
 	}
 	switch k := f.Kind(); k {
 	case reflect.Float64:

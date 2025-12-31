@@ -294,9 +294,8 @@ func protocol_unpack(v []byte, opts ...FrameOption) ([]byte, *Option, error) {
 		// 保留1位
 		// 0000 0000
 		// 1000   表使用最大长度
-		m := v[1]&0x80 == 0x80
 		l := opt.MinLength
-		if m {
+		if v[2]&0x80 > 0 {
 			l = opt.MaxLength
 		}
 		length := v[3 : 3+l]

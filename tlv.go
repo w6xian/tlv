@@ -237,23 +237,14 @@ func tlv_decode_with_len(b []byte, opt *Option) (byte, int, []byte, error) {
 	// 需要去掉高2位（64 32）有效tag只有6位 1-63
 	tag &= 0x3F
 	headerSize := 1 + lengthSize + byte(crc_len)
-	l := 0
-	switch lengthSize {
-	case 1:
-		l = int(b[1])
-	case 2:
-		u16 := []byte{0, 0}
-		copy(u16, b[1:3])
-		l = int(binary.BigEndian.Uint16(u16))
-	case 3, 4:
-		u32 := []byte{0, 0, 0, 0}
-		copy(u32[4-lengthSize:], b[1:5])
-		l = int(binary.BigEndian.Uint32(u32))
-	default:
-		return 0, 0, nil, ErrInvalidLengthSize
+	blen := len(b)
+	if blen < int(1+lengthSize) {
+		return 0, 0, nil, fmt.Errorf("tlv_decode_with_len value length is too long:tag:%d, %v", tag, blen)
 	}
-	if len(b) < int(int(headerSize)+l) {
-		return 0, 0, nil, fmt.Errorf("tlv_decode_with_len value length is too long:tag:%d, %v", tag, len(b))
+	l := bytes_to_int(b[1 : 1+lengthSize])
+
+	if blen < int(int(headerSize)+l) {
+		return 0, 0, nil, fmt.Errorf("tlv_decode_with_len value length is too long:tag:%d, %v", tag, blen)
 	}
 	dataBuf := b[headerSize : int(headerSize)+l] // b[6:6+l]
 	if crc_len > 0 {
