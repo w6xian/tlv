@@ -282,3 +282,41 @@ func ToString(v []byte, opts ...FrameOption) (string, error) {
 	option := newOption(opts...)
 	return read_tlv_struct_string(v, option)
 }
+
+func JsonUnpack(v []byte, opts ...FrameOption) ([]byte, error) {
+	opt := newOption(opts...)
+	_, v, opt = convert_tlv_header(v, opt)
+	t, _, v, err := Next(v, opt)
+	if err != nil {
+		return nil, err
+	}
+	if t != TLV_TYPE_JSON {
+		return nil, fmt.Errorf("tlv type not found: %d", t)
+	}
+	return v, nil
+}
+
+func JsonEnpack(v any, opts ...FrameOption) ([]byte, error) {
+	opt := newOption(opts...)
+	structLen := get_tlv_max_len_bytes(0, opt)
+	// protocol
+	opt.WriteByte(TLV_TYPE_PROTOCOL)
+	// 高低位 0x00,前四位为高位，低四位为低位
+	x := opt.MaxLength & 0x0F
+	n := opt.MinLength & 0x0F
+	opt.WriteByte(x<<4 | n) // 0x41  表示max=4，min=1
+	opt.WriteByte(0x01)     // 0x01  表示后四位表示版本，高四位保留
+	opt.encoder.Write(structLen)
+	jsonData, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	r, err := tlv_encode_option_with_buffer(TLV_TYPE_JSON, jsonData, opt)
+	if err != nil {
+		return nil, err
+	}
+
+	pl := get_tlv_max_len_bytes(r, opt)
+	copy(opt.Bytes()[3:3+len(structLen)], pl)
+	return opt.Bytes(), nil
+}

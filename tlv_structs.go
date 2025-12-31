@@ -243,7 +243,7 @@ func get_value_string(tag byte, data []byte, opt *Option) string {
 		// fmt.Println("TLV_TYPE_JSON:::", data)
 		return fmt.Sprintf("%s", data)
 	default:
-		fmt.Println("tlv type not found", tag, data)
+		// fmt.Println("tlv type not found", tag, data)
 		return reflect.ValueOf(data).String()
 	}
 }

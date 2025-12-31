@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"reflect"
 )
@@ -22,7 +21,7 @@ func tlv_frame_from_json(v any, opts *Option) int {
 	if err != nil {
 		return 0
 	}
-	fmt.Println("tlv type json", jsonData)
+	// fmt.Println("tlv type json", jsonData)
 	r, err := tlv_encode_option_with_buffer(TLV_TYPE_JSON, jsonData, opts)
 	if err != nil {
 		return 0
@@ -464,7 +463,7 @@ func tlv_serialize_value(f reflect.Value, opt *Option) int {
 	case reflect.Uintptr:
 		return tlv_frame_from_uintptr(v.(uintptr), opt)
 	default:
-		fmt.Println("tlv type not found", f.Kind())
+		// fmt.Println("tlv type not found", f.Kind())
 		return tlv_frame_from_json(v, opt)
 	}
 }
