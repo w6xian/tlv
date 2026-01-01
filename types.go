@@ -234,7 +234,7 @@ func DefaultDecoder(data []byte) ([]byte, error) {
 	newOpt := newOption()
 	_, data, err := tlv_decode_opt(data, newOpt)
 	if err != nil {
-		return data, nil
+		return data, err
 	}
 	return data, nil
 }
